@@ -1,25 +1,42 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useState, useRef } from 'react';
+import { PdfSender } from './HttpHandler/PdfSender'
+import Button from '@mui/material/Button'
+import fs from 'fs';
 
 function App() {
+  const stringToArrayBuffer = (str: string) => {
+    const arrayBuffer = new ArrayBuffer(str.length);
+    const arrayBufferView = new Uint8Array(arrayBuffer);
+
+    for (let i = 0; i < str.length; i++) {
+      arrayBufferView[i] = str.charCodeAt(i);
+    }
+
+    return arrayBuffer;
+  }
+
+  const [message, setMessage] = useState("");
+
+  const pdfArrayBuffer =
+      stringToArrayBuffer(fs.readFileSync("../public/hand sani msds.pdf", { encoding: 'utf-8' }));
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+      <>
+          <Button
+              onClick={() => {
+                  PdfSender({
+                      failureResponse: "pdf was not sent",
+                      fileBuffer: pdfArrayBuffer,
+                      successResponse: "pdf was sent successfully",
+                      setMessage: setMessage,
+                  });
+              }}
+          >
+              Send PDF
+          </Button>
+
+          {message}
+      </>
   );
 }
 

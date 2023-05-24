@@ -1,54 +1,64 @@
-    import React, { useState, useRef} from 'react';
-    import Button from '@mui/material/Button'
-    import axios from 'axios';
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 
-    function App() {
-        const server = 'http://localhost:9988/pdf';
-        const inputFile = useRef<HTMLInputElement | null>(null);
-    
-        const onButtonClick = () => {
-            // `current` points to the mounted file input element
-            inputFile.current!.click();
+const server = 'http://localhost:9988/pdf';
+
+function App() {
+    const [isSent, setIsSent] = useState(false);
+    const [filePath, setFilePath] = useState("");
+    const inputFile = useRef<HTMLInputElement | null>(null);
+
+    const onSubmit = () => {
+        const file = inputFile.current?.value;
+
+        if (file !== undefined) {
+            setFilePath(file);
+        }
+    };
+
+    useEffect(() => {
+        const controller = new AbortController();
+        setIsSent(false);
+
+        const reader = new FileReader();
+        reader.readAsDataURL(new Blob([JSON.stringify({ fileName: filePath }, null, 2)],
+            { type: "application/pdf", }));
+
+        reader.onload = () => {
+            axios.post(server, { base64: reader.result }, { signal: controller.signal })
+                .then(response => {
+                    setIsSent(true);
+                })
+                .catch(err => {
+                    console.log(err.message);
+                });
         };
 
+        reader.onerror = () => {
+            console.log(reader.error);
+        }
+
+        return () => controller.abort();
+    }, [inputFile]);
 
     return (
         <>
-            <input type='file' id='file' ref={inputFile} style={{display: 'none'}}/>
-            <button onClick={onButtonClick}>Open file upload window</button>
-            <Button
-              onClick={() => {
-                try {
-                    const files = inputFile.current!.files;
-                    if (files!.length > 0) {
-                        for (let i = 0; i < files!.length; ++i) {
-                            const file = files![i];
-                            if (file.type === 'application/pdf') {
-                                getBase64(server, file);
-                            }
-                        }
-                        
-                    }
-                } catch (e) {
-                    console.log(e);
-                }
+            <form>
+                <fieldset>
+                    <label>
+                        <p>Submit an MSDS pdf</p>
+                        <input name="name" type='file' id='file' ref={inputFile}/>
+                    </label>
+                </fieldset>
+                <button type="submit" onClick={onSubmit}>Submit</button>
+            </form>
 
-              }}>
-              Send PDF
-          </Button>
+            {isSent &&
+                `\n{ ${inputFile} } has been sent to the server.\n`}
         </>
     );
-    }
+}
 
-    function getBase64(server: string, file: Blob): void {        
-        var reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = function () {
-            axios.post(server, {base64: reader.result});
-        };
-        reader.onerror = function (error) {
-            console.log(error);
-        };
-     }     
+export default App;
 
-    export default App;
+

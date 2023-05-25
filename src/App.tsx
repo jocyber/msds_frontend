@@ -5,41 +5,54 @@ const server = 'http://localhost:9988/pdf';
 
 function App() {
     const [isSent, setIsSent] = useState(false);
-    const [filePath, setFilePath] = useState("");
+    const [files, setFiles] = useState<File[]>([]);
     const inputFile = useRef<HTMLInputElement | null>(null);
 
     const onSubmit = () => {
-        const file = inputFile.current?.value;
+        const actualFiles = inputFile.current?.files;
+        let filesArr = [];
 
-        if (file !== undefined) {
-            setFilePath(file);
+        console.log(inputFile.current?.files);
+
+        if (actualFiles !== undefined) {
+            for (let i = 0; i < actualFiles!.length; i++) {
+                filesArr.push(actualFiles![i]);
+            }
         }
+
+        setFiles(filesArr);
     };
 
     useEffect(() => {
         const controller = new AbortController();
         setIsSent(false);
 
-        const reader = new FileReader();
-        reader.readAsDataURL(new Blob([JSON.stringify({ fileName: filePath }, null, 2)],
-            { type: "application/pdf", }));
+        console.log(files.length);
 
-        reader.onload = () => {
-            axios.post(server, { base64: reader.result }, { signal: controller.signal })
-                .then(response => {
-                    setIsSent(true);
-                })
-                .catch(err => {
-                    console.log(err.message);
-                });
-        };
+        if (files.length > 0) {
+            const reader = new FileReader();
+            console.log(files[0]);
+            reader.readAsDataURL(files[0]);
 
-        reader.onerror = () => {
-            console.log(reader.error);
+            reader.onload = () => {
+                console.log(reader.result);
+
+                axios.post(server, { base64: reader.result }, { signal: controller.signal })
+                    .then(response => {
+                        setIsSent(true);
+                    })
+                    .catch(err => {
+                        console.log(err.message);
+                    });
+            };
+
+            reader.onerror = () => {
+                console.log(reader.error);
+            }
         }
 
         return () => controller.abort();
-    }, [inputFile]);
+    }, [files]);
 
     return (
         <>
@@ -50,15 +63,11 @@ function App() {
                         <input name="name" type='file' id='file' ref={inputFile}/>
                     </label>
                 </fieldset>
-                <button type="submit" onClick={onSubmit}>Submit</button>
+                <button type="button" onClick={onSubmit}>Submit</button>
             </form>
-
             {isSent &&
                 `\n{ ${inputFile} } has been sent to the server.\n`}
         </>
     );
 }
-
 export default App;
-
-
